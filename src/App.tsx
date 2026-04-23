@@ -1,13 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, ExternalLink, X, BookOpen, GraduationCap, Code,
-  Compass, Tag, CheckCircle2, UserCircle2, LogIn,
+  Compass, Tag, CheckCircle2, UserCircle2, LogIn, ShieldCheck,
 } from 'lucide-react';
-import { COURSES, type Course } from './data';
-import { getCurrentUser, logout, addHistory, refreshUser, type User } from './auth';
+import { getAllCourses, type Course } from './data';
+import { getCurrentUser, logout, addHistory, refreshUser, isAdmin, type User } from './auth';
 import AuthModal from './AuthModal';
 import HistoryModal from './HistoryModal';
+import AdminPanel from './AdminPanel';
 
 export default function App() {
   const [search, setSearch] = useState('');
@@ -16,6 +17,10 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [courses, setCourses] = useState<Course[]>(() => getAllCourses());
+
+  const reloadCourses = useCallback(() => setCourses(getAllCourses()), []);
 
   // Load user from localStorage on mount
   useEffect(() => {
