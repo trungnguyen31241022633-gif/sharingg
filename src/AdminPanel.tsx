@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, Plus, Trash2, Users, BookOpen, Tag, Link2,
-  ChevronDown, ShieldCheck, Clock, Hash,
+  X, Plus, Trash2, Users, BookOpen, ShieldCheck,
+  Link as LinkIcon, Tag, Save, ChevronDown,
 } from 'lucide-react';
 import {
   getAllUsers, addCustomCourse, deleteCustomCourse, getCustomCourses,
@@ -14,50 +14,43 @@ interface Props {
   onCoursesChanged: () => void;
 }
 
-type Tab = 'courses' | 'accounts';
+type Tab = 'courses' | 'users';
 
 const CATEGORIES = ['Môn học', 'Chứng chỉ', 'Kỹ năng', 'Khác'] as const;
+type Category = typeof CATEGORIES[number];
 
 export default function AdminPanel({ onClose, onCoursesChanged }: Props) {
   const [tab, setTab] = useState<Tab>('courses');
-  const [customCourses, setCustomCourses] = useState<CustomCourse[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [customCourses, setCustomCourses] = useState<CustomCourse[]>(() => getCustomCourses());
+  const [users] = useState<User[]>(() => getAllUsers());
 
-  // Add course form state
+  // Form state
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
   const [tagInput, setTagInput] = useState('');
-  const [hashtags, setHashtags] = useState<string[]>([]);
-  const [category, setCategory] = useState<typeof CATEGORIES[number]>('Môn học');
-  const [addError, setAddError] = useState('');
-  const [addSuccess, setAddSuccess] = useState(false);
-
-  useEffect(() => {
-    setCustomCourses(getCustomCourses());
-    setUsers(getAllUsers());
-  }, []);
+  const [tags, setTags] = useState<string[]>([]);
+  const [category, setCategory] = useState<Category>('Môn học');
+  const [formError, setFormError] = useState('');
+  const [saved, setSaved] = useState(false);
 
   const handleAddTag = () => {
-    const t = tagInput.trim().replace(/^#/, '');
-    if (t && !hashtags.includes(t)) setHashtags(prev => [...prev, t]);
+    const t = tagInput.trim();
+    if (t && !tags.includes(t)) setTags(prev => [...prev, t]);
     setTagInput('');
   };
 
-  const handleAddCourse = () => {
-    setAddError('');
-    if (!title.trim()) { setAddError('Vui lòng nhập tên khóa học.'); return; }
-    if (!link.trim()) { setAddError('Vui lòng nhập link.'); return; }
-    if (hashtags.length === 0) { setAddError('Thêm ít nhất 1 hashtag.'); return; }
-    try { new URL(link); } catch { setAddError('Link không hợp lệ (phải bắt đầu bằng https://).'); return; }
+  const handleSubmit = () => {
+    setFormError('');
+    if (!title.trim()) { setFormError('Vui lòng nhập tên khóa học.'); return; }
+    if (!link.trim()) { setFormError('Vui lòng nhập link.'); return; }
+    if (tags.length === 0) { setFormError('Vui lòng thêm ít nhất một hashtag.'); return; }
 
-    addCustomCourse({ title: title.trim(), link: link.trim(), hashtags, category });
+    addCustomCourse({ title: title.trim(), link: link.trim(), hashtags: tags, category });
     setCustomCourses(getCustomCourses());
     onCoursesChanged();
-
-    // Reset form
-    setTitle(''); setLink(''); setHashtags([]); setTagInput(''); setCategory('Môn học');
-    setAddSuccess(true);
-    setTimeout(() => setAddSuccess(false), 2500);
+    setTitle(''); setLink(''); setTags([]); setTagInput(''); setCategory('Môn học');
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const handleDelete = (id: string) => {
@@ -85,253 +78,223 @@ export default function AdminPanel({ onClose, onCoursesChanged }: Props) {
         className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Top bar */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-rose-400 via-orange-400 to-yellow-400 shrink-0" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 shrink-0" />
 
         {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-slate-100 shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white shadow-md">
-              <ShieldCheck size={20} />
-            </div>
-            <div>
-              <h2 className="font-bold text-slate-900 text-lg leading-tight">Admin Panel</h2>
-              <p className="text-xs text-slate-400">Quản lý khóa học & tài khoản</p>
-            </div>
-          </div>
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400"
+            className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400"
           >
             <X size={18} />
           </button>
-        </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shadow">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Admin Panel</h2>
+              <p className="text-xs text-slate-400">Quản lý nội dung & tài khoản</p>
+            </div>
+          </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-100 shrink-0 px-6">
-          {([['courses', BookOpen, 'Khóa học'], ['accounts', Users, 'Tài khoản']] as const).map(
-            ([key, Icon, label]) => (
+          {/* Tabs */}
+          <div className="flex bg-slate-100 rounded-2xl p-1 w-fit">
+            {([['courses', '📚 Khóa học'], ['users', '👤 Tài khoản']] as [Tab, string][]).map(([t, label]) => (
               <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
-                  tab === key
-                    ? 'border-rose-500 text-rose-600'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  tab === t ? 'bg-white shadow-sm text-violet-700' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                <Icon size={15} />
                 {label}
               </button>
-            )
-          )}
+            ))}
+          </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            {tab === 'courses' && (
-              <motion.div
-                key="courses"
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                className="p-6 space-y-6"
-              >
-                {/* Add course form */}
-                <div className="bg-slate-50 rounded-2xl p-5 space-y-4 border border-slate-100">
-                  <p className="font-semibold text-slate-700 text-sm flex items-center gap-2">
-                    <Plus size={16} className="text-rose-500" /> Thêm khóa học mới
-                  </p>
-
+          {tab === 'courses' && (
+            <div className="p-6 space-y-8">
+              {/* Add form */}
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+                <h3 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                  <Plus size={16} className="text-violet-500" /> Thêm khóa học mới
+                </h3>
+                <div className="space-y-3">
                   {/* Title */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-500">Tên khóa học *</label>
+                  <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-50">
+                    <BookOpen size={15} className="text-slate-400 shrink-0" />
                     <input
                       type="text"
-                      placeholder="VD: Môn Quản trị học"
+                      placeholder="Tên khóa học"
                       value={title}
                       onChange={e => setTitle(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-50 transition-all"
+                      className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400"
                     />
                   </div>
 
                   {/* Link */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-500 flex items-center gap-1"><Link2 size={12} /> Link Drive / URL *</label>
+                  <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-50">
+                    <LinkIcon size={15} className="text-slate-400 shrink-0" />
                     <input
                       type="url"
-                      placeholder="https://drive.google.com/..."
+                      placeholder="Link (https://...)"
                       value={link}
                       onChange={e => setLink(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-50 transition-all"
+                      className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400"
                     />
                   </div>
 
-                  {/* Category */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-500">Danh mục *</label>
-                    <div className="relative">
-                      <select
-                        value={category}
-                        onChange={e => setCategory(e.target.value as typeof CATEGORIES[number])}
-                        className="w-full appearance-none px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-50 transition-all pr-8"
-                      >
-                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                      </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-
                   {/* Hashtags */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-500 flex items-center gap-1"><Hash size={12} /> Hashtag *</label>
+                  <div>
                     <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="VD: QTRI (không cần #)"
-                        value={tagInput}
-                        onChange={e => setTagInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); handleAddTag(); } }}
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-50 transition-all"
-                      />
+                      <div className="flex-1 flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-50">
+                        <Tag size={15} className="text-slate-400 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Thêm hashtag rồi nhấn Enter"
+                          value={tagInput}
+                          onChange={e => setTagInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleAddTag()}
+                          className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400"
+                        />
+                      </div>
                       <button
                         onClick={handleAddTag}
-                        className="px-4 py-2.5 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 transition-colors"
+                        className="px-3 py-2 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors text-sm font-semibold"
                       >
-                        Thêm
+                        + Thêm
                       </button>
                     </div>
-                    {hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {hashtags.map(t => (
-                          <span key={t} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 font-medium">
-                            #{t}
-                            <button onClick={() => setHashtags(prev => prev.filter(x => x !== t))} className="hover:text-rose-900">
-                              <X size={11} />
-                            </button>
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {tags.map(t => (
+                          <span
+                            key={t}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-violet-100 text-violet-700 rounded-lg text-xs font-medium cursor-pointer hover:bg-red-100 hover:text-red-600 transition-colors"
+                            onClick={() => setTags(prev => prev.filter(x => x !== t))}
+                            title="Click để xóa"
+                          >
+                            #{t} ×
                           </span>
                         ))}
                       </div>
                     )}
                   </div>
 
+                  {/* Category */}
+                  <div className="relative">
+                    <select
+                      value={category}
+                      onChange={e => setCategory(e.target.value as Category)}
+                      className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-50 cursor-pointer"
+                    >
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+
                   <AnimatePresence>
-                    {addError && (
-                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-red-500 text-xs bg-red-50 px-3 py-2 rounded-xl">
-                        {addError}
-                      </motion.p>
-                    )}
-                    {addSuccess && (
-                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-green-600 text-xs bg-green-50 px-3 py-2 rounded-xl font-medium">
-                        ✅ Đã thêm khóa học thành công!
+                    {formError && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="text-red-500 text-xs bg-red-50 px-3 py-2 rounded-lg"
+                      >
+                        {formError}
                       </motion.p>
                     )}
                   </AnimatePresence>
 
                   <button
-                    onClick={handleAddCourse}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-white font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md shadow-rose-200"
+                    onClick={handleSubmit}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold text-sm shadow-lg shadow-violet-200 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
-                    ➕ Thêm khóa học
+                    {saved ? <><span>✅</span> Đã lưu!</> : <><Save size={16} /> Thêm khóa học</>}
                   </button>
                 </div>
+              </div>
 
-                {/* Custom courses list */}
-                {customCourses.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Khóa học đã thêm ({customCourses.length})
-                    </p>
+              {/* Custom course list */}
+              <div>
+                <h3 className="font-semibold text-slate-600 text-sm mb-3 flex items-center gap-2">
+                  <BookOpen size={14} /> Khóa học đã thêm ({customCourses.length})
+                </h3>
+                {customCourses.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-6 bg-slate-50 rounded-2xl">
+                    Chưa có khóa học tùy chỉnh nào.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
                     {customCourses.map(c => (
-                      <motion.div
+                      <div
                         key={c.id}
-                        layout
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-3 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm"
+                        className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 hover:border-violet-200 transition-all"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-slate-800 text-sm truncate">{c.title}</p>
-                          <p className="text-xs text-slate-400 mt-0.5 truncate">{c.link}</p>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-semibold">{c.category}</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
                             {c.hashtags.map(t => (
-                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">#{t}</span>
+                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-md bg-violet-50 text-violet-600">#{t}</span>
                             ))}
                           </div>
+                          <p className="text-xs text-slate-400 mt-1 truncate">{c.link}</p>
                         </div>
                         <button
                           onClick={() => handleDelete(c.id)}
-                          className="p-2 rounded-xl hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                          className="p-2 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                          title="Xóa"
                         >
                           <Trash2 size={16} />
                         </button>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
 
-                {customCourses.length === 0 && (
-                  <p className="text-center text-slate-400 text-sm py-4">Chưa có khóa học nào được thêm thủ công.</p>
-                )}
-              </motion.div>
-            )}
-
-            {tab === 'accounts' && (
-              <motion.div
-                key="accounts"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                className="p-6 space-y-3"
-              >
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Tất cả tài khoản ({users.length})
+          {tab === 'users' && (
+            <div className="p-6">
+              <h3 className="font-semibold text-slate-600 text-sm mb-4 flex items-center gap-2">
+                <Users size={14} /> Danh sách tài khoản ({users.length})
+              </h3>
+              {users.length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-8 bg-slate-50 rounded-2xl">
+                  Chưa có tài khoản nào.
                 </p>
-                {users.length === 0 && (
-                  <p className="text-center text-slate-400 text-sm py-8">Chưa có tài khoản nào được đăng ký.</p>
-                )}
-                {users.map(u => (
-                  <motion.div
-                    key={u.id}
-                    layout
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm ${
-                        u.id === 'admin_root'
-                          ? 'bg-gradient-to-br from-rose-500 to-orange-500'
-                          : 'bg-gradient-to-br from-purple-500 to-indigo-500'
-                      }`}>
+              ) : (
+                <div className="space-y-2">
+                  {users.map(u => (
+                    <div
+                      key={u.id}
+                      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-violet-200 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400 to-fuchsia-400 flex items-center justify-center text-white font-bold text-lg shrink-0">
                         {u.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-slate-800 text-sm truncate">{u.name}</p>
-                          {u.id === 'admin_root' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 font-bold shrink-0">ADMIN</span>
-                          )}
+                          {u.email.toLowerCase().includes('admin') || u.id === 'admin_root' ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-semibold shrink-0">Admin</span>
+                          ) : null}
                         </div>
-                        <p className="text-xs text-slate-400 truncate">{u.email}</p>
+                        <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Đăng ký: {formatDate(u.createdAt)} · {u.history.length} lịch sử
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-slate-400 pl-12">
-                      <span className="flex items-center gap-1">
-                        <Clock size={11} /> Tạo: {formatDate(u.createdAt)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <BookOpen size={11} /> {u.history.length} khóa đã xem
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
