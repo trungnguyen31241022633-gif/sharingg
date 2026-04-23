@@ -23,6 +23,20 @@ export interface CustomCourse {
   createdAt: string;
 }
 
+// User-uploaded courses — private or shared publicly
+export interface UserCourse {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  title: string;
+  hashtags: string[];
+  link: string;
+  category: 'Môn học' | 'Chứng chỉ' | 'Kỹ năng' | 'Khác';
+  description?: string;
+  isPublic: boolean;   // true = visible in main feed; false = private
+  createdAt: string;
+}
+
 // ─── Admin config ─────────────────────────────────────────────────────────────
 
 export const ADMIN_EMAIL = 'trungnguyen.31241022633@st.ueh.edu.vn';
@@ -33,6 +47,7 @@ const ADMIN_PASSWORD = '23112006Tt@';
 const USERS_KEY = 'hoclieu_users';
 const SESSION_KEY = 'hoclieu_session';
 const CUSTOM_COURSES_KEY = 'hoclieu_custom_courses';
+const USER_COURSES_KEY = 'hoclieu_user_courses';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,7 +83,7 @@ export function getAllUsers(): User[] {
   return Object.values(getUsers());
 }
 
-// ─── Custom courses (admin-managed) ──────────────────────────────────────────
+// ─── Admin custom courses ─────────────────────────────────────────────────────
 
 export function getCustomCourses(): CustomCourse[] {
   try {
@@ -95,6 +110,79 @@ export function deleteCustomCourse(id: string) {
   localStorage.setItem(CUSTOM_COURSES_KEY, JSON.stringify(courses));
 }
 
+// ─── User courses ─────────────────────────────────────────────────────────────
+
+function getAllUserCoursesRaw(): UserCourse[] {
+  try {
+    return JSON.parse(localStorage.getItem(USER_COURSES_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveAllUserCourses(courses: UserCourse[]) {
+  localStorage.setItem(USER_COURSES_KEY, JSON.stringify(courses));
+}
+
+/** Get courses owned by the current logged-in user (all, public + private) */
+export function getMyUserCourses(): UserCourse[] {
+  const id = getCurrentUserId();
+  if (!id) return [];
+  return getAllUserCoursesRaw().filter(c => c.ownerId === id);
+}
+
+/** Get all PUBLIC user courses (for the main feed) */
+export function getPublicUserCourses(): UserCourse[] {
+  return getAllUserCoursesRaw().filter(c => c.isPublic);
+}
+
+export function addUserCourse(
+  course: Omit<UserCourse, 'id' | 'ownerId' | 'ownerName' | 'createdAt'>
+): UserCourse | null {
+  const user = getCurrentUser();
+  if (!user) return null;
+  const all = getAllUserCoursesRaw();
+  const newCourse: UserCourse = {
+    ...course,
+    id: `uc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    ownerId: user.id,
+    ownerName: user.name,
+    createdAt: new Date().toISOString(),
+  };
+  all.push(newCourse);
+  saveAllUserCourses(all);
+  return newCourse;
+}
+
+export function updateUserCourse(id: string, patch: Partial<Pick<UserCourse, 'title' | 'hashtags' | 'link' | 'category' | 'description' | 'isPublic'>>): boolean {
+  const userId = getCurrentUserId();
+  const all = getAllUserCoursesRaw();
+  const idx = all.findIndex(c => c.id === id && c.ownerId === userId);
+  if (idx === -1) return false;
+  all[idx] = { ...all[idx], ...patch };
+  saveAllUserCourses(all);
+  return true;
+}
+
+export function deleteUserCourse(id: string): boolean {
+  const userId = getCurrentUserId();
+  const all = getAllUserCoursesRaw();
+  const filtered = all.filter(c => !(c.id === id && c.ownerId === userId));
+  if (filtered.length === all.length) return false;
+  saveAllUserCourses(filtered);
+  return true;
+}
+
+export function toggleUserCoursePublic(id: string): boolean {
+  const userId = getCurrentUserId();
+  const all = getAllUserCoursesRaw();
+  const idx = all.findIndex(c => c.id === id && c.ownerId === userId);
+  if (idx === -1) return false;
+  all[idx].isPublic = !all[idx].isPublic;
+  saveAllUserCourses(all);
+  return true;
+}
+
 // ─── Auth actions ─────────────────────────────────────────────────────────────
 
 export function register(name: string, email: string, password: string): { ok: true; user: User } | { ok: false; error: string } {
@@ -103,7 +191,6 @@ export function register(name: string, email: string, password: string): { ok: t
   if (existing) return { ok: false, error: 'Email này đã được đăng ký.' };
 
   const id = `u_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  // We store a simple hash — for production use bcrypt server-side; this is client-only demo
   const key = `${id}__pwd`;
   localStorage.setItem(key, password);
 
@@ -122,7 +209,6 @@ export function register(name: string, email: string, password: string): { ok: t
 }
 
 export function login(email: string, password: string): { ok: true; user: User } | { ok: false; error: string } {
-  // Seed admin account on first login attempt
   if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
     if (password !== ADMIN_PASSWORD) return { ok: false, error: 'Mật khẩu không đúng.' };
     const users = getUsers();
@@ -160,10 +246,8 @@ export function addHistory(courseId: string, courseTitle: string) {
   const user = users[id];
   if (!user) return;
 
-  // Remove duplicate then prepend
   user.history = user.history.filter(h => h.courseId !== courseId);
   user.history.unshift({ courseId, courseTitle, visitedAt: new Date().toISOString() });
-  // Keep last 50
   user.history = user.history.slice(0, 50);
   saveUsers(users);
 }
