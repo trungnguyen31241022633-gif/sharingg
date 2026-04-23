@@ -1,3 +1,5 @@
+import { getCustomCourses, type CustomCourse } from './auth';
+
 export interface SubLink {
   label: string;
   url: string;
@@ -199,3 +201,16 @@ export const COURSES: Course[] = [
     category: 'Khác',
   },
 ];
+
+// Merges static COURSES with admin-added custom courses
+export function getAllCourses(): Course[] {
+  const custom: Course[] = getCustomCourses().map((c: CustomCourse) => ({
+    id: c.id,
+    title: c.title,
+    hashtags: c.hashtags,
+    link: c.link,
+    type: 'external' as const,
+    category: c.category,
+  }));
+  return [...COURSES, ...custom];
+}
