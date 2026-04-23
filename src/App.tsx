@@ -29,22 +29,21 @@ export default function App() {
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    COURSES.forEach(c => c.hashtags.forEach(t => tags.add(t)));
+    courses.forEach(c => c.hashtags.forEach(t => tags.add(t)));
     return Array.from(tags).sort();
-  }, []);
+  }, [courses]);
 
   const filteredCourses = useMemo(() => {
-    return COURSES.filter(course => {
+    return courses.filter(course => {
       const matchSearch =
         course.title.toLowerCase().includes(search.toLowerCase()) ||
         course.hashtags.some(t => t.toLowerCase().includes(search.toLowerCase()));
       const matchTag = selectedTag ? course.hashtags.includes(selectedTag) : true;
       return matchSearch && matchTag;
     });
-  }, [search, selectedTag]);
+  }, [courses, search, selectedTag]);
 
   const handleOpenCourse = (course: Course) => {
-    // Track history
     if (user) {
       addHistory(course.id, course.title);
       setUser(refreshUser());
@@ -58,7 +57,7 @@ export default function App() {
   };
 
   const handleOpenById = (courseId: string) => {
-    const course = COURSES.find(c => c.id === courseId);
+    const course = courses.find(c => c.id === courseId);
     if (course) handleOpenCourse(course);
   };
 
@@ -88,7 +87,16 @@ export default function App() {
       <nav className="sticky top-0 z-40 glass border-b border-white/30">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <span className="font-bold text-slate-800 text-sm">🎓 Học Liệu Tổng Hợp</span>
-          <div>
+          <div className="flex items-center gap-2">
+            {user && isAdmin(user) && (
+              <button
+                onClick={() => setShowAdmin(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors shadow-sm"
+              >
+                <ShieldCheck size={15} />
+                Admin
+              </button>
+            )}
             {user ? (
               <button
                 onClick={() => setShowHistory(true)}
@@ -310,6 +318,16 @@ export default function App() {
             onClose={() => setShowHistory(false)}
             onLogout={handleLogout}
             onOpenCourse={handleOpenById}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Admin panel */}
+      <AnimatePresence>
+        {showAdmin && user && isAdmin(user) && (
+          <AdminPanel
+            onClose={() => setShowAdmin(false)}
+            onCoursesChanged={reloadCourses}
           />
         )}
       </AnimatePresence>
