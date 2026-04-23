@@ -3,12 +3,26 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, ExternalLink, X, BookOpen, GraduationCap, Code,
   Compass, Tag, CheckCircle2, UserCircle2, LogIn, ShieldCheck,
+  Upload, Globe,
 } from 'lucide-react';
 import { getAllCourses, type Course } from './data';
-import { getCurrentUser, logout, addHistory, refreshUser, isAdmin, type User } from './auth';
+import { getCurrentUser, logout, addHistory, refreshUser, isAdmin, getPublicUserCourses, type User, type UserCourse } from './auth';
 import AuthModal from './AuthModal';
 import HistoryModal from './HistoryModal';
 import AdminPanel from './AdminPanel';
+import MyCoursesModal from './MyCoursesModal';
+
+function userCourseToCourse(uc: UserCourse): Course {
+  return {
+    id: uc.id,
+    title: uc.title,
+    hashtags: uc.hashtags,
+    link: uc.link,
+    type: 'external',
+    category: uc.category,
+    description: uc.description ?? `Chia sẻ bởi ${uc.ownerName}`,
+  };
+}
 
 export default function App() {
   const [search, setSearch] = useState('');
@@ -18,14 +32,24 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [courses, setCourses] = useState<Course[]>(() => getAllCourses());
+  const [showMyCourses, setShowMyCourses] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [userCourseIds, setUserCourseIds] = useState<Set<string>>(new Set());
 
-  const reloadCourses = useCallback(() => setCourses(getAllCourses()), []);
+  const reloadCourses = useCallback(() => {
+    const base = getAllCourses();
+    const shared = getPublicUserCourses();
+    setUserCourseIds(new Set(shared.map(c => c.id)));
+    const sharedAsCourses = shared.map(userCourseToCourse);
+    const ids = new Set(base.map(c => c.id));
+    const merged = [...base, ...sharedAsCourses.filter(c => !ids.has(c.id))];
+    setCourses(merged);
+  }, []);
 
-  // Load user from localStorage on mount
   useEffect(() => {
     setUser(getCurrentUser());
-  }, []);
+    reloadCourses();
+  }, [reloadCourses]);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -48,7 +72,6 @@ export default function App() {
       addHistory(course.id, course.title);
       setUser(refreshUser());
     }
-
     if (course.type === 'modal' || course.type === 'form') {
       setSelectedCourse(course);
     } else {
@@ -65,6 +88,7 @@ export default function App() {
     logout();
     setUser(null);
     setShowHistory(false);
+    reloadCourses();
   };
 
   return (
@@ -97,13 +121,22 @@ export default function App() {
                 Admin
               </button>
             )}
+            {user && (
+              <button
+                onClick={() => setShowMyCourses(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-sm transition-colors"
+              >
+                <Upload size={15} />
+                <span className="hidden sm:inline">Kho của tôi</span>
+              </button>
+            )}
             {user ? (
               <button
                 onClick={() => setShowHistory(true)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-sm transition-colors"
               >
                 <UserCircle2 size={18} />
-                <span className="max-w-[120px] truncate">{user.name}</span>
+                <span className="max-w-[100px] truncate hidden sm:inline">{user.name}</span>
               </button>
             ) : (
               <button
@@ -194,6 +227,7 @@ export default function App() {
               <CourseCard
                 key={course.id}
                 course={course}
+                isUserShared={userCourseIds.has(course.id)}
                 onClick={() => handleOpenCourse(course)}
               />
             ))}
@@ -247,20 +281,16 @@ export default function App() {
                 >
                   <X size={20} />
                 </button>
-
                 <div className="flex items-center gap-3 mb-4 text-purple-600 font-semibold uppercase tracking-wider text-xs">
                   <CategoryIcon category={selectedCourse.category} />
                   <span>{selectedCourse.category}</span>
                 </div>
-
                 <h3 className="text-2xl font-display font-bold text-slate-900 mb-4 pr-8 leading-tight">
                   {selectedCourse.title}
                 </h3>
-
                 {selectedCourse.description && (
                   <p className="text-slate-600 mb-6 leading-relaxed">{selectedCourse.description}</p>
                 )}
-
                 <div className="space-y-4">
                   {selectedCourse.type === 'modal' && selectedCourse.subLinks && (
                     <div className="space-y-3">
@@ -276,12 +306,11 @@ export default function App() {
                           className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-purple-200 hover:bg-purple-50 transition-all group shadow-sm"
                         >
                           <span className="text-slate-700 font-medium group-hover:text-purple-700">{sub.label}</span>
-                          <ExternalLink size={18} className="text-slate-400 group-hover:text-purple-500 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                          <ExternalLink size={18} className="text-slate-400 group-hover:text-purple-500" />
                         </a>
                       ))}
                     </div>
                   )}
-
                   {selectedCourse.type === 'form' && (
                     <a
                       href={selectedCourse.link}
@@ -305,7 +334,7 @@ export default function App() {
         {showAuth && (
           <AuthModal
             onClose={() => setShowAuth(false)}
-            onSuccess={u => { setUser(u); setShowAuth(false); }}
+            onSuccess={u => { setUser(u); setShowAuth(false); reloadCourses(); }}
           />
         )}
       </AnimatePresence>
@@ -331,11 +360,22 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* My courses modal */}
+      <AnimatePresence>
+        {showMyCourses && user && (
+          <MyCoursesModal
+            user={user}
+            onClose={() => setShowMyCourses(false)}
+            onCoursesChanged={reloadCourses}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function CourseCard({ course, onClick }: { course: Course; onClick: () => void }) {
+function CourseCard({ course, isUserShared, onClick }: { course: Course; isUserShared: boolean; onClick: () => void }) {
   return (
     <motion.div
       layout
@@ -346,11 +386,18 @@ function CourseCard({ course, onClick }: { course: Course; onClick: () => void }
       onClick={onClick}
       className="glass-card group h-full flex flex-col cursor-pointer rounded-2xl p-6 relative overflow-hidden"
     >
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-1.5 rounded-lg bg-pink-100 text-pink-600">
-          <CategoryIcon category={course.category} />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-pink-100 text-pink-600">
+            <CategoryIcon category={course.category} />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-pink-500">{course.category}</span>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-pink-500">{course.category}</span>
+        {isUserShared && (
+          <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+            <Globe size={9} /> Cộng đồng
+          </span>
+        )}
       </div>
 
       <h3 className="text-xl font-display font-semibold text-slate-800 mb-4 leading-tight group-hover:text-purple-600 transition-colors">
