@@ -14,10 +14,25 @@ export interface HistoryEntry {
   visitedAt: string;
 }
 
+export interface CustomCourse {
+  id: string;
+  title: string;
+  hashtags: string[];
+  link: string;
+  category: 'Môn học' | 'Chứng chỉ' | 'Kỹ năng' | 'Khác';
+  createdAt: string;
+}
+
+// ─── Admin config ─────────────────────────────────────────────────────────────
+
+export const ADMIN_EMAIL = 'trungnguyen.31241022633@st.ueh.edu.vn';
+const ADMIN_PASSWORD = '23112006Tt@';
+
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
 const USERS_KEY = 'hoclieu_users';
 const SESSION_KEY = 'hoclieu_session';
+const CUSTOM_COURSES_KEY = 'hoclieu_custom_courses';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +56,43 @@ export function getCurrentUser(): User | null {
   const id = getCurrentUserId();
   if (!id) return null;
   return getUsers()[id] ?? null;
+}
+
+// ─── Auth actions ─────────────────────────────────────────────────────────────
+
+export function isAdmin(user: User | null): boolean {
+  return !!user && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
+export function getAllUsers(): User[] {
+  return Object.values(getUsers());
+}
+
+// ─── Custom courses (admin-managed) ──────────────────────────────────────────
+
+export function getCustomCourses(): CustomCourse[] {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_COURSES_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function addCustomCourse(course: Omit<CustomCourse, 'id' | 'createdAt'>): CustomCourse {
+  const courses = getCustomCourses();
+  const newCourse: CustomCourse = {
+    ...course,
+    id: `cc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    createdAt: new Date().toISOString(),
+  };
+  courses.push(newCourse);
+  localStorage.setItem(CUSTOM_COURSES_KEY, JSON.stringify(courses));
+  return newCourse;
+}
+
+export function deleteCustomCourse(id: string) {
+  const courses = getCustomCourses().filter(c => c.id !== id);
+  localStorage.setItem(CUSTOM_COURSES_KEY, JSON.stringify(courses));
 }
 
 // ─── Auth actions ─────────────────────────────────────────────────────────────
@@ -70,6 +122,22 @@ export function register(name: string, email: string, password: string): { ok: t
 }
 
 export function login(email: string, password: string): { ok: true; user: User } | { ok: false; error: string } {
+  // Seed admin account on first login attempt
+  if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    if (password !== ADMIN_PASSWORD) return { ok: false, error: 'Mật khẩu không đúng.' };
+    const users = getUsers();
+    let admin = Object.values(users).find(u => u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+    if (!admin) {
+      const id = 'admin_root';
+      admin = { id, name: 'Admin', email: ADMIN_EMAIL, createdAt: new Date().toISOString(), history: [] };
+      users[id] = admin;
+      localStorage.setItem(`${id}__pwd`, ADMIN_PASSWORD);
+      saveUsers(users);
+    }
+    localStorage.setItem(SESSION_KEY, admin.id);
+    return { ok: true, user: admin };
+  }
+
   const users = getUsers();
   const user = Object.values(users).find(u => u.email.toLowerCase() === email.toLowerCase());
   if (!user) return { ok: false, error: 'Email không tồn tại.' };
