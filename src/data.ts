@@ -26,6 +26,14 @@ export const COURSES: Course[] = [
     category: 'Môn học',
   },
   {
+    id: 'B2B',
+    title: 'Khóa B2B',
+    hashtags: ['MKT', 'b2b','bussiness'],
+    link: 'https://drive.google.com/drive/folders/1Y4jlukuhb9BrOA3PVS7inwtATxJAryYz?usp=sharing',
+    type: 'external',
+    category: 'Môn học',
+  },
+  {
     id: 'ktvm-micro',
     title: 'Môn Kinh tế vi mô',
     hashtags: ['Kinh tế vi mô', 'Môn học'],
