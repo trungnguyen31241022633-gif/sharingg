@@ -354,10 +354,11 @@ export default function App() {
   const [userCourseIds, setUserCourseIds] = useState<Set<string>>(new Set());
 
   const greetingMessages = [
-    'Xin chào! Hôm nay bạn muốn học gì? 😊',
-    'S-Space — học cùng nhau nào! 📚',
-    'Khám phá tài liệu mới ngay nào~',
+    'Xin chào! Hôm nay bạn muốn học gì?',
+    'S-Space chào bồ nha',
+    'Khám phá tài liệu mới ngay, được cập nhật vào cuối mỗi tuần',
     'Cố lên! Bạn làm được mà! ✨',
+    'Nhớ là tài liệu được tổng hợp rộng rãi, cấp phép truy cập được xem nhé! Hông phải tự do admin làm đâu',
   ];
   const greeting = useTypingText(greetingMessages, 55, 2500);
 
