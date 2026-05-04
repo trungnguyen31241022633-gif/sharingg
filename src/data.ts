@@ -42,6 +42,14 @@ export const COURSES: Course[] = [
     category: 'Khác',
   },
     {
+    id: 'spss',
+    title: 'Hướng dẫn SPSS',
+    hashtags: ['spss', 'smart pls'],
+    link: 'https://docs.google.com/document/d/1DIbAoAAyPzue8TUq-LhXV_C0Egahkfe3CzOE6-DAN-g/edit?usp=sharing',
+    type: 'external',
+    category: 'Kỹ năng',
+  },
+    {
     id: 'vstep',
     title: 'Reading Vstep',
     hashtags: ['vstep', 'reading'],
