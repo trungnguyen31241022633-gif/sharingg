@@ -273,9 +273,9 @@ export default function MyCoursesModal({ user, onClose, onCoursesChanged }: Prop
                   >
                     {form.isPublic ? <Globe size={16} /> : <Lock size={16} />}
                     <div className="flex-1 text-left">
-                      <p>{form.isPublic ? 'Công khai — mọi người thấy được' : 'Chỉ mình tôi — riêng tư'}</p>
+                      <p>{form.isPublic ? 'Công khai — khóa học hiện bên ngoài' : 'Chỉ xuất hiện trong kho'}</p>
                       <p className="text-xs font-normal opacity-60 mt-0.5">
-                        {form.isPublic ? 'Tài liệu hiển thị trên trang chính cho tất cả người dùng.' : 'Chỉ bạn mới thấy tài liệu này trong kho cá nhân.'}
+                        {form.isPublic ? 'Tài liệu hiển thị bên ngoài.' : 'Chỉ có thể thấy tài liệu này trong kho cá nhân.'}
                       </p>
                     </div>
                     <div className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 ${form.isPublic ? 'bg-emerald-400' : 'bg-slate-300'}`}>
