@@ -26,6 +26,14 @@ export const COURSES: Course[] = [
     category: 'Môn học',
   },
     {
+    id: 'adminrequest',
+    title: '[Yêu cầu thêm khóa học] - Thêm tài liệu',
+    hashtags: ['Admin'],
+    link: 'https://forms.gle/rjGpCaiiM4PKdEkZ8',
+    type: 'external',
+    category: 'Khác',
+  },
+    {
     id: 'tqm',
     title: 'Sách TQM 4.0 - Vietnam Quality Community',
     hashtags: ['quản trị chất lượng', 'Sách'],
