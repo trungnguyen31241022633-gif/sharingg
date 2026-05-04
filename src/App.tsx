@@ -342,7 +342,10 @@ function AnimatedBg() {
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [search, setSearch] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tag');
+  });
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [showAuth, setShowAuth] = useState(false);
@@ -371,6 +374,19 @@ export default function App() {
     const merged = [...base, ...sharedAsCourses.filter(c => !ids.has(c.id))];
     setCourses(merged);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (selectedTag) {
+      params.set('tag', selectedTag);
+    } else {
+      params.delete('tag');
+    }
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+    window.history.pushState(null, '', newUrl);
+  }, [selectedTag]);
 
   useEffect(() => {
     setUser(getCurrentUser());
