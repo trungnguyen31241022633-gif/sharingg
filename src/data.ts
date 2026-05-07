@@ -33,6 +33,14 @@ export const COURSES: Course[] = [
     type: 'external',
     category: 'Khác',
   },
+      {
+    id: 'verceluses',
+    title: '[Cách build từ AI Studio sang Vercel để công khai (Khái quát ver.) dành cho team',
+    hashtags: ['Ai','Tdtk','vercel','coding'],
+    link: 'https://docs.google.com/presentation/d/1hO1XYVtDfOQ1VMd--7kQBXlaMdq5EFl5kSNxn9epzOk/edit?usp=sharing',
+    type: 'external',
+    category: 'Kỹ năng',
+  },
     {
     id: 'tqm',
     title: 'Sách TQM 4.0 - Vietnam Quality Community',
